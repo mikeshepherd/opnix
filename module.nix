@@ -1,5 +1,14 @@
-{ config, lib, pkgs, self, ... }: let
+{ config, lib, pkgs, ... }: let
   cfg = config.services.onepassword-secrets;
+  # Create a new pkgs instance with our overlay
+  pkgsWithOverlay = import pkgs.path {
+    inherit (pkgs) system;
+    overlays = [
+      (final: prev: {
+        opnix = import ./package.nix { pkgs = final; };
+      })
+    ];
+  };
 in {
   options.services.onepassword-secrets = {
     enable = lib.mkEnableOption "1Password secrets integration";
@@ -23,7 +32,7 @@ in {
 
     outputDir = lib.mkOption {
       type = lib.types.str;
-      default = "/run/secrets";
+      default = "/var/lib/opnix/secrets";
       description = "Directory to store retrieved secrets";
     };
   };
@@ -57,7 +66,7 @@ in {
         echo "Token length: ''${#TOKEN} characters"
 
         # Run the secrets retrieval tool using token file
-        ${self.packages.${pkgs.system}.default}/bin/opnix \
+        ${pkgsWithOverlay.opnix}/bin/opnix \
           -token-file ${cfg.tokenFile} \
           -config ${cfg.configFile} \
           -output ${cfg.outputDir}
