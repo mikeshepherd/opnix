@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }: let
+{ config, lib, pkgs, self, ... }: let
   cfg = config.services.onepassword-secrets;
 in {
   options.services.onepassword-secrets = {
@@ -57,7 +57,7 @@ in {
         echo "Token length: ''${#TOKEN} characters"
 
         # Run the secrets retrieval tool using token file
-        ${pkgs.opnix}/bin/opnix \
+        ${self.packages.${pkgs.system}.default}/bin/opnix \
           -token-file ${cfg.tokenFile} \
           -config ${cfg.configFile} \
           -output ${cfg.outputDir}
