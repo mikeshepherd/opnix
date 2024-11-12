@@ -10,7 +10,7 @@
     nixpkgs,
     flake-utils,
     ...
-  }: 
+  }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
         inherit system;
@@ -29,14 +29,14 @@
         ];
       };
 
-      packages.default = import ./package.nix { inherit pkgs; };
+      packages.default = import ./nix/package.nix { inherit pkgs; };
 
       formatter = pkgs.alejandra;
     }) // {
-      nixosModules.default = import ./module.nix;
-      
+      nixosModules.default = import ./nix/module.nix;
+
       overlays.default = final: prev: {
-        opnix = import ./package.nix { pkgs = final; };
+        opnix = import ./nix/package.nix { pkgs = final; };
       };
     };
 }
