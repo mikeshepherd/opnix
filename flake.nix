@@ -17,129 +17,51 @@
     flake-utils,
     gomod2nix,
     ...
-  }: let
-    nixosModule = {
-      config,
-      lib,
-      pkgs,
-      ...
-    }: let
-      cfg = config.services.onepassword-secrets;
+  }:
+    flake-utils.lib.eachDefaultSystem (system: let
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [gomod2nix.overlays.default];
+      };
+
+      src = pkgs.runCommand "opnix-source" {} ''
+        mkdir -p $out/cmd/opnix
+        mkdir -p $out/internal/{config,onepass,secrets}
+
+        cp ${./cmd/opnix/main.go} $out/cmd/opnix/main.go
+
+        cp ${./internal/config}/*.go $out/internal/config/
+        cp ${./internal/onepass}/*.go $out/internal/onepass/
+        cp ${./internal/secrets}/*.go $out/internal/secrets/
+
+        cp ${./go.mod} $out/go.mod
+        cp ${./go.sum} $out/go.sum
+        cp ${./gomod2nix.toml} $out/gomod2nix.toml
+      '';
     in {
-      options.services.onepassword-secrets = {
-        enable = lib.mkEnableOption "1Password secrets integration";
-
-        tokenFile = lib.mkOption {
-          type = lib.types.path;
-          description = ''
-            Path to file containing the 1Password service account token.
-            The file should contain only the token and should have appropriate permissions (600).
-
-            Example:
-              Create token file: echo "your-token" > /run/keys/op-token
-              Set permissions: chmod 600 /run/keys/op-token
-          '';
-        };
-
-        configFile = lib.mkOption {
-          type = lib.types.path;
-          description = "Path to secrets configuration file";
-        };
-
-        outputDir = lib.mkOption {
-          type = lib.types.str;
-          default = "/run/secrets";
-          description = "Directory to store retrieved secrets";
-        };
+      devShells.default = pkgs.mkShell {
+        buildInputs = with pkgs; [
+          just
+          go
+          gotools
+          go-tools
+          golangci-lint
+          gomod2nix.packages.${system}.default
+        ];
       };
 
-      config = lib.mkIf cfg.enable {
-        system.activationScripts.onepassword-secrets = {
-          deps = [];
-          text = ''
-            # Ensure output directory exists with correct permissions
-            mkdir -p ${cfg.outputDir}
-            chmod 750 ${cfg.outputDir}
-
-            # Debug: Check if token file exists and is readable
-            if [ ! -f ${cfg.tokenFile} ]; then
-              echo "Token file ${cfg.tokenFile} does not exist!"
-              exit 1
-            fi
-
-            if [ ! -r ${cfg.tokenFile} ]; then
-              echo "Token file ${cfg.tokenFile} is not readable!"
-              exit 1
-            fi
-
-            # Debug: Check token content (length and format)
-            TOKEN=$(cat ${cfg.tokenFile})
-            if [ -z "$TOKEN" ]; then
-              echo "Token file is empty!"
-              exit 1
-            fi
-
-            echo "Token length: ''${#TOKEN} characters"
-
-            # Run the secrets retrieval tool using token file
-            ${self.packages.${pkgs.system}.default}/bin/opnix \
-              -token-file ${cfg.tokenFile} \
-              -config ${cfg.configFile} \
-              -output ${cfg.outputDir}
-          '';
-        };
+      packages.default = pkgs.buildGoApplication {
+        pname = "opnix";
+        version = "0.1.0";
+        inherit src;
+        modules = ./gomod2nix.toml;
+        subPackages = [ "cmd/opnix" ];
       };
-    };
-  in
-    flake-utils.lib.eachDefaultSystem (
-      system: let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [gomod2nix.overlays.default];
-        };
-      in {
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            alejandra
-            just
-            go
-            gopls
-            gotools
-            go-tools
-            golangci-lint
-            nil
-            gomod2nix.packages.${system}.default
-          ];
-        };
+    }) // {
+      nixosModules.default = import ./module.nix;
 
-        packages.default = pkgs.buildGoModule {
-          pname = "opnix";
-          version = "0.1.0";
-          src = ./.;
-          vendorHash = "sha256-owAPNn818xd+KNjSSFiLKeqL1KfDL9Espw6rwCddjbw=";
-          modules = ./gomod2nix.toml;
-        };
-
-        # Add formatter
-        formatter = pkgs.alejandra;
-      }
-    )
-    // {
-      # Platform-independent outputs
-      nixosModules.default = nixosModule;
-      nixosModule = nixosModule; # For compatibility with traditional imports
-
-      # Provide an overlay for the package
       overlays.default = final: prev: {
         opnix = self.packages.${prev.system}.default;
       };
-
-      # Add checks that run on CI
-      checks =
-        builtins.mapAttrs (system: pkgs: {
-          # You can add more checks here
-          default = self.packages.${system}.default;
-        })
-        nixpkgs.legacyPackages;
     };
 }
