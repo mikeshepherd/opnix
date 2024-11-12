@@ -8,6 +8,7 @@ import (
     "log"
     "os"
     "path/filepath"
+    "strings"
 
     "github.com/1password/onepassword-sdk-go"
 )
@@ -24,7 +25,7 @@ type Config struct {
 func getToken(tokenFile string) (string, error) {
     // First check if token is provided via environment variable
     if token := os.Getenv("OP_SERVICE_ACCOUNT_TOKEN"); token != "" {
-        return token, nil
+        return strings.TrimSpace(token), nil
     }
 
     // If not, try to read from token file if provided
@@ -33,7 +34,8 @@ func getToken(tokenFile string) (string, error) {
         if err != nil {
             return "", fmt.Errorf("failed to read token file: %w", err)
         }
-        return string(data), nil
+        // Ensure we trim any whitespace or newlines
+        return strings.TrimSpace(string(data)), nil
     }
 
     return "", fmt.Errorf("no token provided: set OP_SERVICE_ACCOUNT_TOKEN or provide token file")
@@ -49,6 +51,11 @@ func main() {
     token, err := getToken(*tokenFile)
     if err != nil {
         log.Fatal(err)
+    }
+
+    // Log token format for debugging (first few characters)
+    if len(token) > 10 {
+        log.Printf("Token prefix: %s...", token[:10])
     }
 
     // Initialize 1Password client
