@@ -18,7 +18,12 @@
     gomod2nix,
     ...
   }: let
-    nixosModule = {config, lib, pkgs, ...}: let
+    nixosModule = {
+      config,
+      lib,
+      pkgs,
+      ...
+    }: let
       cfg = config.services.onepassword-secrets;
     in {
       options.services.onepassword-secrets = {
@@ -55,6 +60,26 @@
             # Ensure output directory exists with correct permissions
             mkdir -p ${cfg.outputDir}
             chmod 750 ${cfg.outputDir}
+
+            # Debug: Check if token file exists and is readable
+            if [ ! -f ${cfg.tokenFile} ]; then
+              echo "Token file ${cfg.tokenFile} does not exist!"
+              exit 1
+            fi
+
+            if [ ! -r ${cfg.tokenFile} ]; then
+              echo "Token file ${cfg.tokenFile} is not readable!"
+              exit 1
+            fi
+
+            # Debug: Check token content (length and format)
+            TOKEN=$(cat ${cfg.tokenFile})
+            if [ -z "$TOKEN" ]; then
+              echo "Token file is empty!"
+              exit 1
+            fi
+
+            echo "Token length: ''${#TOKEN} characters"
 
             # Run the secrets retrieval tool using token file
             ${self.packages.${pkgs.system}.default}/bin/opnix \
@@ -98,7 +123,8 @@
         # Add formatter
         formatter = pkgs.alejandra;
       }
-    ) // {
+    )
+    // {
       # Platform-independent outputs
       nixosModules.default = nixosModule;
       nixosModule = nixosModule; # For compatibility with traditional imports
@@ -109,9 +135,11 @@
       };
 
       # Add checks that run on CI
-      checks = builtins.mapAttrs (system: pkgs: {
-        # You can add more checks here
-        default = self.packages.${system}.default;
-      }) nixpkgs.legacyPackages;
+      checks =
+        builtins.mapAttrs (system: pkgs: {
+          # You can add more checks here
+          default = self.packages.${system}.default;
+        })
+        nixpkgs.legacyPackages;
     };
 }
