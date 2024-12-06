@@ -2,15 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2024-12-06
+
+### 🚀 Features
+
+- Home manager module
+
 ## [0.3.0] - 2024-11-30
 
 ### 🚀 Features
 
-- Introduce token set command
-
-### 🐛 Bug Fixes
-
-- Do not print token length as debug
+- Set token command (#2)
 
 ### ⚙️ Miscellaneous Tasks
 
