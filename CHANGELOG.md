@@ -2,11 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2024-12-06
+## [0.4.0] - 2025-05-06
 
 ### 🚀 Features
 
 - Home manager module
+- Home manager module accepts custom tokenFile (#9)
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog
+- Add license file
+- Add note on verifying secret references (#8)
 
 ## [0.3.0] - 2024-11-30
 
