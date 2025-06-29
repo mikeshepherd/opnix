@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 
 - Update package version and hash (#15)
 
+### 📚 Documentation
+
+- Update changelog for 0.6.0 release (#17)
+
 ### ⚙️ Miscellaneous Tasks
 
 - Update 1password SDK (#14)
