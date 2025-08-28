@@ -125,6 +125,7 @@ services.onepassword-secrets.secrets = {
       '';
     };
   };
+}
 ```
 
 **Naming Rules:**
