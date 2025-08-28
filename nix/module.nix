@@ -126,6 +126,13 @@ in {
             example = "0644";
           };
 
+          template = lib.mkOption {
+            type = lib.types.str;
+            default = "";
+            description = "Tempalte to render the secret into";
+            example = "API_KEY=\"{{ .Secret }}\"";
+          };
+
           services = lib.mkOption {
             type =
               lib.types.either
@@ -342,6 +349,7 @@ in {
                 symlinks = secret.symlinks;
                 variables = secret.variables;
                 services = secret.services;
+                template = secret.template;
               })
               (validateSecretKeys cfg.secrets);
             pathTemplate = cfg.pathTemplate;
