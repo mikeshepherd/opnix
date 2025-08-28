@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/user"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 
 	"github.com/brizzbuzz/opnix/internal/config"
 	"github.com/brizzbuzz/opnix/internal/errors"
@@ -117,6 +119,33 @@ func (p *Processor) Process(cfg *config.Config) (*ProcessResult, error) {
 }
 
 func (p *Processor) processSecret(secret config.Secret, secretName, value string) (string, error) {
+
+	if secret.Template != "" {
+		tmpl, err := template.New("value").Parse(secret.Template)
+		if err != nil {
+			return "", errors.TemplateError(
+				fmt.Sprintf("Parsing template for %s", secretName),
+				secret.Template,
+				err,
+			)
+		}
+		buf := new(bytes.Buffer)
+		err = tmpl.Execute(buf, struct {
+					Secret  string
+				}{
+					Secret: value,
+				},
+			)
+		if err != nil {
+			return "", errors.TemplateError(
+				fmt.Sprintf("Executing template for %s", secretName),
+				secret.Template,
+				err,
+			)
+		}
+		value = buf.String()
+	}
+
 	// Determine output path with enhanced path management
 	outputPath, err := p.resolveSecretPathWithTemplate(secret, secretName)
 	if err != nil {
