@@ -120,9 +120,9 @@ services.onepassword-secrets.secrets = {
     };
     apiKey = {
       reference = "op://Homelab/Service/api_key";
-      template = '''
+      template = ''
         API_TOKEN="{{ .Secret }}"
-      ''';
+      '';
     };
   };
 ```
