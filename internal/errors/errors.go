@@ -190,6 +190,22 @@ func UserGroupError(operation, userOrGroup, entityType string, availableEntities
 	}
 }
 
+
+// TemplateError creates errors for template parsing and execution issues
+func TemplateError(operation, template string, cause error) *OpnixError {
+	suggestions := []string{
+		"Ensure template is valid",
+	}
+
+	return &OpnixError{
+		Operation:   operation,
+		Component:   "template",
+		Issue:       fmt.Sprintf("Template %s could not be parsed", template),
+		Suggestions: suggestions,
+		Cause:       cause,
+	}
+}
+
 // ValidationError creates general validation errors
 func ValidationError(operation, field, value, expectedFormat string) *OpnixError {
 	return &OpnixError{

@@ -17,6 +17,7 @@ type Secret struct {
 	Symlinks  []string          `json:"symlinks,omitempty"`
 	Variables map[string]string `json:"variables,omitempty"`
 	Services  interface{}       `json:"services,omitempty"`
+	Template string             `json:"template,omitempty"`
 }
 
 type ChangeDetection struct {

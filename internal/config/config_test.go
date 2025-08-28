@@ -432,3 +432,30 @@ func TestLoadMultipleWithTemplates(t *testing.T) {
 		t.Errorf("Expected 2 secrets, got %d", len(cfg.Secrets))
 	}
 }
+
+
+func TestSecretTemplate(t *testing.T) {
+	t.Run("secret with template", func(t *testing.T) {
+		secret := Secret{
+			Path:      "ssl/cert",
+			Reference: "op://vault/ssl/cert",
+			Template:  "CERT={{ .Reference }}",
+		}
+
+		if secret.Template != "CERT={{ .Reference }}" {
+			t.Errorf("Expected template CERT={{ .Reference }}, got %s", secret.Template)
+		}
+	})
+
+	t.Run("secret with defaults", func(t *testing.T) {
+		secret := Secret{
+			Path:      "database/password",
+			Reference: "op://vault/db/password",
+			// Template not specified - should work fine
+		}
+
+		if secret.Template != "" {
+			t.Errorf("Expected empty template, got %s", secret.Template)
+		}
+	})
+}

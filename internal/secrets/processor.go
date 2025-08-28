@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/user"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 
 	"github.com/brizzbuzz/opnix/internal/config"
 	"github.com/brizzbuzz/opnix/internal/errors"
@@ -86,6 +88,32 @@ func (p *Processor) processSecret(secret config.Secret, secretName string) error
 			fmt.Sprintf("Failed to resolve 1Password reference: %s", secret.Reference),
 			err,
 		)
+	}
+
+	if secret.Template != "" {
+		tmpl, err := template.New("value").Parse(secret.Template)
+		if err != nil {
+			return errors.TemplateError(
+				fmt.Sprintf("Parsing template for %s", secretName),
+				secret.Template,
+				err,
+			)
+		}
+		buf := new(bytes.Buffer)
+		err = tmpl.Execute(buf, struct {
+					Secret  string
+				}{
+					Secret: value,
+				},
+			)
+		if err != nil {
+			return errors.TemplateError(
+				fmt.Sprintf("Executing template for %s", secretName),
+				secret.Template,
+				err,
+			)
+		}
+		value = buf.String()
 	}
 
 	// Determine output path with enhanced path management

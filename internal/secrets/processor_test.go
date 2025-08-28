@@ -321,3 +321,75 @@ func containsAtIndex(s, substr string) bool {
 	}
 	return false
 }
+
+
+func TestProcessorWithTemplate(t *testing.T) {
+	// Create mock client
+	mock := &mockClient{
+		secrets: map[string]string{
+			"op://vault/item/field": "test-secret-value",
+		},
+	}
+
+	// Create temp output directory
+	tmpDir, err := os.MkdirTemp("", "opnix-processor-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create processor
+	processor := NewProcessor(mock, tmpDir)
+	
+	t.Run("Valid template", func(t *testing.T) {
+		// Create test config
+		cfg := &config.Config{
+			Secrets: []config.Secret{
+				{
+					Path:      "test/secret",
+					Reference: "op://vault/item/field",
+					Template:  "SECRET=\"{{ .Secret }}\"",
+				},
+			},
+		}
+
+		// Process secrets
+		if err := processor.Process(cfg); err != nil {
+			t.Fatalf("Failed to process secrets: %v", err)
+		}
+
+		// Verify output
+		outputPath := filepath.Join(tmpDir, "test/secret")
+		content, err := os.ReadFile(outputPath)
+		if err != nil {
+			t.Fatalf("Failed to read output file: %v", err)
+		}
+
+		if string(content) != "SECRET=\"test-secret-value\"" {
+			t.Errorf("Expected secret value SECRET=\"test-secret-value\", got %s", string(content))
+		}
+	})
+
+	
+	t.Run("Invalid template", func(t *testing.T) {
+		// Create test config
+		cfg := &config.Config{
+			Secrets: []config.Secret{
+				{
+					Path:      "test/secret",
+					Reference: "op://vault/item/field",
+					Template:  "SECRET=\"{{ .Secret }\"",
+				},
+			},
+		}
+		
+		err := processor.Process(cfg)
+		
+		if err == nil {
+			t.Error("Expected error with invalid template, got nil")
+		}
+		if err != nil && !contains(err.Error(), "could not be parsed") {
+			t.Errorf("Expected 'could not be parsed' error, got: %v", err)
+		}
+	})
+}

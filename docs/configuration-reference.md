@@ -118,6 +118,12 @@ services.onepassword-secrets.secrets = {
       owner = "caddy";
       mode = "0644";
     };
+    apiKey = {
+      reference = "op://Homelab/Service/api_key";
+      template = '''
+        API_TOKEN="{{ .Secret }}"
+      ''';
+    };
   };
 ```
 
@@ -183,6 +189,13 @@ Each secret in the `secrets` attribute set supports these options:
 - **Default**: `[]`
 - **Description**: Services to manage when this secret changes
 - **Notes**: Can be a simple list of service names or detailed service configuration
+
+
+#### `template`
+- **Type**: `str`
+- **Default**: `""`
+- **Description**: Template to generate output file with
+- **Notes**: Uses [text/template](https://pkg.go.dev/text/template#pkg-overview) to render the secret value into a template. Secret is available as `{{ .Secret }}` template variable
 
 **Simple list example:**
 ```nix
