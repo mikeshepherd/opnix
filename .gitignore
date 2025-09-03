@@ -4,8 +4,12 @@ vendor
 .idea
 .vscode
 repo_dump.txt
+<<<<<<< HEAD
 opnix
 .crush
 .crush.json
 .gocache
 .nix-cache
+=======
+./opnix
+>>>>>>> 84a6e45 (dont fail start up with rate limiting problems)

@@ -75,6 +75,9 @@ func handleError(err error) {
 	if opnixErr, ok := err.(*errors.OpnixError); ok {
 		// Print structured error with full context
 		fmt.Fprintf(os.Stderr, "%s\n", opnixErr.Error())
+		if strings.Contains(opnixErr.Error(), "rate limit") {
+			os.Exit(166)
+		}
 	} else {
 		// Handle regular errors with some formatting
 		errMsg := err.Error()
@@ -96,6 +99,7 @@ func handleError(err error) {
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n", errMsg)
 		}
 	}
+	os.Exit(1)
 }
 
 type envCommand struct {
