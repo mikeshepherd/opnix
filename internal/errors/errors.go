@@ -119,7 +119,13 @@ func OnePasswordError(operation, issue string, cause error) *OpnixError {
 	suggestions := []string{}
 
 	// Add context-specific suggestions based on the issue
-	if strings.Contains(issue, "authentication") || strings.Contains(issue, "token") {
+	if strings.Contains(issue, "rate limit") || strings.Contains(cause.Error(), "rate limit") {
+		suggestions = append(suggestions,
+			"Wait a few minutes before retrying",
+			"Reduce the number of concurrent secret requests",
+			"Contact 1Password support if rate limits are too restrictive",
+		)
+	} else if strings.Contains(issue, "authentication") || strings.Contains(issue, "token") {
 		suggestions = append(suggestions,
 			"Verify your 1Password service account token is valid",
 			"Check if the token has expired: visit 1Password admin console",
@@ -139,12 +145,6 @@ func OnePasswordError(operation, issue string, cause error) *OpnixError {
 			"Verify 1Password service is accessible",
 			"Check for firewall or proxy issues",
 			"Retry the operation in a few minutes",
-		)
-	} else if strings.Contains(issue, "rate limit") {
-		suggestions = append(suggestions,
-			"Wait a few minutes before retrying",
-			"Reduce the number of concurrent secret requests",
-			"Contact 1Password support if rate limits are too restrictive",
 		)
 	}
 

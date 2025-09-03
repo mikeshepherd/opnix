@@ -149,7 +149,7 @@ in
             template = lib.mkOption {
               type = lib.types.str;
               default = "";
-              description = "Tempalte to render the secret into";
+              description = "Template to render the secret into";
               example = "API_KEY=\"{{ .Secret }}\"";
             };
 
@@ -478,13 +478,19 @@ in
               fi
 
               # Run the secrets retrieval tool for each config file
+              set +e
               ${lib.concatMapStringsSep "\n" (configFile: ''
                 echo "Processing config file: ${configFile}"
                 ${pkgsWithOverlay.opnix}/bin/opnix secret \
                   -token-file ${cfg.tokenFile} \
                   -config ${configFile} \
                   -output ${cfg.outputDir}
+                exit_code=$?
+                if [ $exit_code -ne 0 ] && [ $exit_code -ne 166 ]; then
+                    exit 1
+                fi
               '') allConfigFiles}
+              set -e
 
               ${lib.optionalString cfg.systemdIntegration.enable ''
                 echo "INFO: Systemd integration enabled - services will be managed automatically"
