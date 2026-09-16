@@ -54,6 +54,16 @@ in {
       '';
     };
 
+    connectHost = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        URL of the 1Password Connect server. When set, tokenFile contains a
+        Connect API token instead of a service account token.
+      '';
+      example = "https://connect.example.com";
+    };
+
     configFiles = lib.mkOption {
       type = lib.types.listOf lib.types.path;
       default = [];
@@ -311,7 +321,7 @@ in {
               ${lib.concatMapStringsSep "\n" (configFile: ''
                   echo "Processing config file: ${configFile}"
                   ${pkgsWithOverlay.opnix}/bin/opnix secret \
-                    -token-file ${cfg.tokenFile} \
+                    -token-file ${cfg.tokenFile} ${lib.optionalString (cfg.connectHost != null) "-connect-host ${lib.escapeShellArg cfg.connectHost}"} \
                     -config ${configFile} \
                     -output ${cfg.outputDir}
                 '')

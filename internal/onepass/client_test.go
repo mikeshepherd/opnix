@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	connectonepassword "github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/1password/onepassword-sdk-go"
 	opnixerrors "github.com/brizzbuzz/opnix/internal/errors"
 )
@@ -15,6 +16,14 @@ import (
 type fakeSecretsAPI struct {
 	resolve    func(context.Context, string) (string, error)
 	resolveAll func(context.Context, []string) (onepassword.ResolveAllResponse, error)
+}
+
+type fakeConnectSecretsAPI struct {
+	getItem func(string, string) (*connectonepassword.Item, error)
+}
+
+func (f fakeConnectSecretsAPI) GetItem(itemQuery, vaultQuery string) (*connectonepassword.Item, error) {
+	return f.getItem(itemQuery, vaultQuery)
 }
 
 func (f fakeSecretsAPI) Resolve(ctx context.Context, reference string) (string, error) {
@@ -134,6 +143,70 @@ func TestNewClientRetriesTransientInitializationFailures(t *testing.T) {
 
 	if secret != "resolved:op://vault/item/field" {
 		t.Fatalf("unexpected secret %q", secret)
+	}
+}
+
+func TestNewConnectClientUsesConnectTokenAndHost(t *testing.T) {
+	originalNewConnectSecrets := newConnectSecrets
+	t.Cleanup(func() {
+		newConnectSecrets = originalNewConnectSecrets
+	})
+
+	t.Setenv("OP_CONNECT_TOKEN", "connect-test-token")
+	newConnectSecrets = func(host, token string) connectSecretsAPI {
+		if host != "https://connect.example.test" {
+			t.Fatalf("unexpected Connect host %q", host)
+		}
+		if token != "connect-test-token" {
+			t.Fatalf("unexpected Connect token %q", token)
+		}
+		return fakeConnectSecretsAPI{getItem: func(_, _ string) (*connectonepassword.Item, error) {
+			return nil, stderrors.New("not used")
+		}}
+	}
+
+	client, err := NewConnectClient("https://connect.example.test", "")
+	if err != nil {
+		t.Fatalf("expected Connect client initialization to succeed: %v", err)
+	}
+	if client.connectSecrets == nil {
+		t.Fatal("expected Connect client to be configured")
+	}
+}
+
+func TestResolveConnectSecretWithSection(t *testing.T) {
+	client := &Client{connectSecrets: fakeConnectSecretsAPI{getItem: func(item, vault string) (*connectonepassword.Item, error) {
+		if vault != "MPS Software" || item != "codeServerVM" {
+			t.Fatalf("unexpected Connect lookup for %q in %q", item, vault)
+		}
+		return &connectonepassword.Item{Fields: []*connectonepassword.ItemField{{
+			Label:   "access_token",
+			Value:   "resolved-secret",
+			Section: &connectonepassword.ItemSection{Label: "attic"},
+		}}}, nil
+	}}}
+
+	secret, err := client.ResolveSecret("op://MPS Software/codeServerVM/attic/access_token")
+	if err != nil {
+		t.Fatalf("expected Connect secret resolution to succeed: %v", err)
+	}
+	if secret != "resolved-secret" {
+		t.Fatalf("unexpected secret %q", secret)
+	}
+}
+
+func TestResolveConnectSecretRejectsInvalidReference(t *testing.T) {
+	client := &Client{connectSecrets: fakeConnectSecretsAPI{getItem: func(_, _ string) (*connectonepassword.Item, error) {
+		t.Fatal("Connect should not be called for an invalid reference")
+		return nil, nil
+	}}}
+
+	_, err := client.ResolveSecret("not-a-reference")
+	if err == nil {
+		t.Fatal("expected invalid reference error")
+	}
+	if code := opnixerrors.ExitCode(err); code != opnixerrors.ExitCodeMissingReference {
+		t.Fatalf("expected exit code %d, got %d", opnixerrors.ExitCodeMissingReference, code)
 	}
 }
 

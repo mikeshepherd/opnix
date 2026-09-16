@@ -55,6 +55,16 @@ in
       '';
     };
 
+    connectHost = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        URL of the 1Password Connect server. When set, tokenFile contains a
+        Connect API token instead of a service account token.
+      '';
+      example = "https://connect.example.com";
+    };
+
     updateTokenFilePermissions = lib.mkEnableOption ''
       Update token file permissions to the opnix group.
       This can be disabled to leave permissions as they are,
@@ -488,7 +498,7 @@ in
               ${lib.concatMapStringsSep "\n" (configFile: ''
                 echo "Processing config file: ${configFile}"
                 ${pkgsWithOverlay.opnix}/bin/opnix secret \
-                  -token-file ${cfg.tokenFile} \
+                  -token-file ${cfg.tokenFile} ${lib.optionalString (cfg.connectHost != null) "-connect-host ${lib.escapeShellArg cfg.connectHost}"} \
                   -config ${configFile} \
                   -output ${cfg.outputDir}
                 exit_code=$?
@@ -548,7 +558,7 @@ in
                     ${lib.concatMapStringsSep "\n" (configFile: ''
                       echo "Re-processing config file for service changes: ${configFile}"
                       ${pkgsWithOverlay.opnix}/bin/opnix secret \
-                        -token-file ${cfg.tokenFile} \
+                        -token-file ${cfg.tokenFile} ${lib.optionalString (cfg.connectHost != null) "-connect-host ${lib.escapeShellArg cfg.connectHost}"} \
                         -config ${configFile} \
                         -output ${cfg.outputDir} || true
                     '') allConfigFiles}

@@ -25,13 +25,14 @@ type systemdManager interface {
 }
 
 type secretCommand struct {
-	fs         *flag.FlagSet
-	configFile string
-	outputDir  string
-	tokenFile  string
+	fs          *flag.FlagSet
+	configFile  string
+	outputDir   string
+	tokenFile   string
+	connectHost string
 
 	loadConfig       func(string) (*config.Config, error)
-	newClient        func(string) (secrets.SecretClient, error)
+	newClient        func(string, string) (secrets.SecretClient, error)
 	processorFactory func(secrets.SecretClient, string) secretProcessor
 	systemdFactory   func(config.SystemdIntegration) (systemdManager, error)
 }
@@ -43,7 +44,8 @@ func newSecretCommand() *secretCommand {
 
 	sc.fs.StringVar(&sc.configFile, "config", "secrets.json", "Path to secrets configuration file")
 	sc.fs.StringVar(&sc.outputDir, "output", "secrets", "Directory to store retrieved secrets")
-	sc.fs.StringVar(&sc.tokenFile, "token-file", defaultTokenPath, "Path to file containing 1Password service account token")
+	sc.fs.StringVar(&sc.tokenFile, "token-file", defaultTokenPath, "Path to file containing the 1Password token")
+	sc.fs.StringVar(&sc.connectHost, "connect-host", "", "1Password Connect server URL")
 
 	sc.fs.Usage = func() {
 		fmt.Fprintf(sc.fs.Output(), "Usage: opnix secret [options]\n\n")
@@ -53,7 +55,10 @@ func newSecretCommand() *secretCommand {
 	}
 
 	sc.loadConfig = config.Load
-	sc.newClient = func(path string) (secrets.SecretClient, error) {
+	sc.newClient = func(path, connectHost string) (secrets.SecretClient, error) {
+		if connectHost != "" {
+			return onepass.NewConnectClient(connectHost, path)
+		}
 		return onepass.NewClient(path)
 	}
 	sc.processorFactory = func(client secrets.SecretClient, outputDir string) secretProcessor {
@@ -88,7 +93,7 @@ func (s *secretCommand) Run() error {
 	log.Printf("Loaded configuration with %d secrets", len(cfg.Secrets))
 
 	// Initialize 1Password client with validation
-	client, err := s.newClient(s.tokenFile)
+	client, err := s.newClient(s.tokenFile, s.connectHost)
 	if err != nil {
 		// Error already has context from onepass.NewClient
 		return err
