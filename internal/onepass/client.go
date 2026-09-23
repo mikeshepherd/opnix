@@ -271,7 +271,10 @@ func parseConnectReference(reference string) (vault, item, section, field string
 
 func matchesSection(candidate *connectonepassword.ItemSection, expected string) bool {
 	if expected == "" {
-		return candidate == nil
+		// Connect represents fields added without an explicit section as part of
+		// its implicit "add more" section. References without a section should
+		// resolve those fields in the same way as fields with no section.
+		return candidate == nil || (candidate.ID == "add more" && candidate.Label == "")
 	}
 	return candidate != nil && candidate.Label == expected
 }

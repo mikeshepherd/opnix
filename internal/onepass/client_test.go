@@ -195,6 +195,29 @@ func TestResolveConnectSecretWithSection(t *testing.T) {
 	}
 }
 
+func TestResolveConnectSecretWithImplicitDefaultSection(t *testing.T) {
+	client := &Client{connectSecrets: fakeConnectSecretsAPI{getItem: func(item, vault string) (*connectonepassword.Item, error) {
+		if vault != "MPS Software" || item != "MPS Software PKI" {
+			t.Fatalf("unexpected Connect lookup for %q in %q", item, vault)
+		}
+		return &connectonepassword.Item{Fields: []*connectonepassword.ItemField{{
+			Label: "JWK",
+			Value: "resolved-secret",
+			Section: &connectonepassword.ItemSection{
+				ID: "add more",
+			},
+		}}}, nil
+	}}}
+
+	secret, err := client.ResolveSecret("op://MPS Software/MPS Software PKI/JWK")
+	if err != nil {
+		t.Fatalf("expected Connect secret resolution to succeed: %v", err)
+	}
+	if secret != "resolved-secret" {
+		t.Fatalf("unexpected secret %q", secret)
+	}
+}
+
 func TestResolveConnectSecretRejectsInvalidReference(t *testing.T) {
 	client := &Client{connectSecrets: fakeConnectSecretsAPI{getItem: func(_, _ string) (*connectonepassword.Item, error) {
 		t.Fatal("Connect should not be called for an invalid reference")

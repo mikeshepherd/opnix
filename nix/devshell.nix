@@ -24,6 +24,7 @@
 in
   pkgs.mkShell {
     buildInputs = with pkgs; [
+      stdenv.cc
       alejandra
       just
       go
